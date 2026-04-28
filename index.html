@@ -1,0 +1,1599 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🥗 나의 다이어트 다이어리</title>
+<link href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  :root {
+    --mint: #5CC8B0;
+    --mint-light: #E8F8F4;
+    --mint-mid: #A8E6DA;
+    --peach: #FF8C69;
+    --peach-light: #FFF0EB;
+    --yellow: #FFD166;
+    --yellow-light: #FFF8E6;
+    --lavender: #B39DDB;
+    --lavender-light: #F3F0FF;
+    --blue: #4AAFD8;
+    --blue-light: #E3F4FB;
+    --bg: #F7FDFB;
+    --card: #FFFFFF;
+    --text: #2D4A43;
+    --text-soft: #7A9E97;
+    --border: #D8F0EA;
+    --shadow: 0 4px 20px rgba(92,200,176,0.12);
+    --radius: 20px;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Noto Sans KR',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
+
+  /* HEADER */
+  header {
+    background: linear-gradient(135deg, #5CC8B0 0%, #3AAFA9 100%);
+    padding: 14px 16px 10px;
+    box-shadow: 0 2px 12px rgba(92,200,176,0.3);
+    position: sticky; top:0; z-index:100;
+  }
+  .header-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+  header h1 { font-family:'Gowun Dodum',sans-serif; color:white; font-size:1.15rem; }
+  .today-badge {
+    background: rgba(255,255,255,0.9); color:var(--mint);
+    padding:2px 10px; border-radius:20px; font-size:0.7rem; font-weight:700;
+  }
+
+  /* DATE NAVIGATOR */
+  .date-nav {
+    display: flex; align-items: center; gap: 6px;
+    background: rgba(255,255,255,0.18); border-radius: 50px;
+    padding: 4px 8px;
+  }
+  .date-nav-btn {
+    background: rgba(255,255,255,0.3); border:none; color:white;
+    width:28px; height:28px; border-radius:50%; cursor:pointer;
+    font-size:1.1rem; display:flex; align-items:center; justify-content:center;
+    transition:background 0.15s; flex-shrink:0;
+  }
+  .date-nav-btn:hover { background: rgba(255,255,255,0.5); }
+  .date-nav-btn:disabled { opacity:0.35; cursor:default; }
+  .date-display {
+    color:white; font-size:0.82rem; font-weight:700;
+    cursor:pointer; padding:5px 10px; border-radius:20px;
+    white-space:nowrap; flex:1; text-align:center;
+    display:flex; align-items:center; justify-content:center; gap:5px;
+    transition:background 0.15s;
+    user-select:none;
+  }
+  .date-display:hover { background: rgba(255,255,255,0.22); }
+  .date-display .cal-icon { font-size:0.9rem; }
+
+  /* CUSTOM CALENDAR POPUP */
+  .cal-overlay {
+    position:fixed; inset:0; background:rgba(0,0,0,0.4);
+    z-index:500; display:none; align-items:flex-start; justify-content:center;
+    padding-top:80px;
+  }
+  .cal-overlay.open { display:flex; }
+  .cal-popup {
+    background:white; border-radius:22px; padding:18px;
+    width:min(340px, 92vw);
+    box-shadow:0 20px 60px rgba(0,0,0,0.25);
+    animation:calPop 0.22s cubic-bezier(.34,1.56,.64,1);
+  }
+  @keyframes calPop { from{opacity:0;transform:scale(0.88) translateY(-10px)} to{opacity:1;transform:none} }
+
+  .cal-header {
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom:14px;
+  }
+  .cal-nav-btn {
+    width:32px; height:32px; border-radius:50%; border:none; background:var(--mint-light);
+    color:var(--mint); font-size:1.1rem; cursor:pointer; display:flex;
+    align-items:center; justify-content:center; transition:background 0.15s;
+    font-weight:700;
+  }
+  .cal-nav-btn:hover { background:var(--mint-mid); }
+  .cal-month-label {
+    font-size:1rem; font-weight:800; color:var(--text);
+    cursor:pointer; padding:4px 10px; border-radius:10px;
+    transition:background 0.15s;
+  }
+  .cal-month-label:hover { background:var(--mint-light); }
+
+  .cal-dow-row {
+    display:grid; grid-template-columns:repeat(7,1fr);
+    text-align:center; margin-bottom:6px;
+  }
+  .cal-dow { font-size:0.7rem; font-weight:700; color:var(--text-soft); padding:4px 0; }
+  .cal-dow:first-child { color:#e53e3e; }
+  .cal-dow:last-child { color:#4A90D9; }
+
+  .cal-grid {
+    display:grid; grid-template-columns:repeat(7,1fr);
+    gap:2px;
+  }
+  .cal-day {
+    aspect-ratio:1; display:flex; align-items:center; justify-content:center;
+    border-radius:50%; font-size:0.82rem; cursor:pointer;
+    transition:all 0.15s; position:relative;
+  }
+  .cal-day:hover:not(.cal-empty):not(.cal-future) { background:var(--mint-light); }
+  .cal-day.cal-empty { cursor:default; }
+  .cal-day.cal-future { color:#ccc; cursor:default; }
+  .cal-day.cal-selected {
+    background:var(--mint); color:white; font-weight:700;
+  }
+  .cal-day.cal-today {
+    font-weight:800;
+  }
+  .cal-day.cal-today:not(.cal-selected)::after {
+    content:''; position:absolute; bottom:3px; left:50%;
+    transform:translateX(-50%);
+    width:4px; height:4px; border-radius:50%; background:var(--mint);
+  }
+  .cal-day.has-data:not(.cal-selected)::before {
+    content:''; position:absolute; top:3px; right:3px;
+    width:5px; height:5px; border-radius:50%; background:var(--peach);
+  }
+  .cal-day.cal-sun { color:#e53e3e; }
+  .cal-day.cal-sun.cal-selected { color:white; }
+  .cal-day.cal-sat { color:#4A90D9; }
+  .cal-day.cal-sat.cal-selected { color:white; }
+
+  .cal-footer {
+    display:flex; gap:8px; margin-top:14px; justify-content:flex-end;
+  }
+  .cal-today-btn {
+    padding:7px 16px; border-radius:50px; border:2px solid var(--mint);
+    background:white; color:var(--mint); font-size:0.8rem; font-weight:700;
+    cursor:pointer; font-family:inherit; transition:all 0.15s;
+  }
+  .cal-today-btn:hover { background:var(--mint-light); }
+  .cal-close-btn {
+    padding:7px 16px; border-radius:50px; border:none;
+    background:var(--mint); color:white; font-size:0.8rem; font-weight:700;
+    cursor:pointer; font-family:inherit; transition:all 0.15s;
+  }
+  .cal-close-btn:hover { background:#4AB89A; }
+
+  /* NAV TABS */
+  nav { display:flex; background:white; border-bottom:1px solid var(--border); overflow-x:auto; scrollbar-width:none; }
+  nav::-webkit-scrollbar { display:none; }
+  .tab { flex:1; min-width:72px; padding:10px 6px 8px; text-align:center; font-size:0.73rem; color:var(--text-soft); cursor:pointer; border-bottom:3px solid transparent; transition:all 0.2s; white-space:nowrap; }
+  .tab.active { color:var(--mint); border-bottom-color:var(--mint); font-weight:700; }
+  .tab .tab-icon { font-size:1.1rem; display:block; margin-bottom:2px; }
+
+  /* READONLY */
+  .readonly-banner {
+    display:none; background:#FFFBEA; border:1px solid #FFE082;
+    border-radius:10px; padding:8px 14px; margin-bottom:10px;
+    font-size:0.82rem; color:#7A5800; text-align:center;
+  }
+  .readonly-banner.show { display:block; }
+
+  /* MAIN */
+  main { padding:14px; max-width:600px; margin:0 auto; }
+  .page { display:none; }
+  .page.active { display:block; animation:fadeIn 0.2s ease; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:none} }
+
+  /* CARD */
+  .card { background:var(--card); border-radius:var(--radius); padding:16px; margin-bottom:12px; box-shadow:var(--shadow); border:1px solid var(--border); }
+  .card-title { font-size:0.82rem; font-weight:700; color:var(--text-soft); letter-spacing:0.4px; margin-bottom:12px; display:flex; align-items:center; gap:6px; }
+
+  /* CALORIE RING (legacy, kept for JS compat) */
+  .ring-svg { display:none; }
+  .ring-bg,.ring-fg,.ring-text,.ring-sub { display:none; }
+  .calorie-ring-wrap,.calorie-stats,.cal-row,.cal-label,.cal-val,.cal-goal,.cal-remain { display:none; }
+
+  /* ====== NEW CALORIE HERO ====== */
+  .kcal-hero {
+    display:flex; align-items:center; justify-content:space-between;
+    gap:12px; margin-bottom:14px;
+  }
+  .kcal-left { flex:1; }
+  .kcal-flame-anim {
+    font-size:2rem; display:inline-block;
+    animation: flicker 2s ease-in-out infinite alternate;
+  }
+  @keyframes flicker {
+    0%   { transform:scale(1) rotate(-3deg); filter:brightness(1); }
+    50%  { transform:scale(1.1) rotate(2deg); filter:brightness(1.2); }
+    100% { transform:scale(0.95) rotate(-1deg); filter:brightness(0.95); }
+  }
+  .kcal-flame-anim.cool { animation:none; filter:grayscale(0.5); font-size:1.6rem; }
+  .kcal-big-num {
+    font-size:2.2rem; font-weight:800; color:var(--text);
+    line-height:1.1; margin-top:2px;
+  }
+  .kcal-unit { font-size:1rem; font-weight:600; color:var(--text-soft); margin-left:2px; }
+  .kcal-goal-sub { font-size:0.73rem; color:var(--text-soft); margin-top:3px; }
+
+  /* Arc SVG */
+  .kcal-arc-svg { width:110px; height:110px; flex-shrink:0; }
+  .kcal-arc-bg { fill:none; stroke:#EFEFEF; stroke-width:12; }
+  .kcal-arc-fg {
+    fill:none; stroke:var(--mint); stroke-width:12; stroke-linecap:round;
+    transform:rotate(-90deg); transform-origin:50% 50%;
+    transition:stroke-dasharray 0.7s cubic-bezier(.4,0,.2,1);
+  }
+  .kcal-arc-over {
+    fill:none; stroke:#FF4757; stroke-width:12; stroke-linecap:round;
+    transform:rotate(-90deg); transform-origin:50% 50%;
+    transition:all 0.7s cubic-bezier(.4,0,.2,1);
+  }
+  .kcal-arc-pct { font-size:1.35rem; font-weight:800; fill:var(--text); }
+  .kcal-arc-lbl { font-size:0.6rem; fill:var(--text-soft); }
+
+  /* Bar */
+  .kcal-bar-wrap { margin-bottom:14px; }
+  .kcal-bar-track {
+    height:14px; background:#EFEFEF; border-radius:99px; overflow:hidden;
+    position:relative; margin-bottom:5px;
+  }
+  .kcal-bar-fill {
+    height:100%; border-radius:99px; max-width:100%;
+    background:linear-gradient(90deg,#5CC8B0,#FFD166,#FF8C69);
+    background-size:200% 100%;
+    transition:width 0.7s cubic-bezier(.4,0,.2,1), background-position 0.5s;
+  }
+  .kcal-bar-fill.danger { background:linear-gradient(90deg,#FF8C69,#FF4757) !important; }
+  .kcal-bar-labels {
+    display:flex; justify-content:space-between;
+    font-size:0.65rem; color:var(--text-soft); padding:0 2px;
+  }
+
+  /* Stats row */
+  .kcal-stats-row {
+    display:flex; gap:8px; margin-top:0;
+  }
+  .kcal-stat {
+    flex:1; border-radius:14px; padding:10px 6px; text-align:center;
+  }
+  .kcal-stat.eaten { background:var(--mint-light); }
+  .kcal-stat.remain { background:var(--peach-light); }
+  .kcal-stat.remain.done { background:#E8F8F4; }
+  .kcal-stat.goal { background:var(--yellow-light); }
+  .kst-icon { font-size:1.1rem; margin-bottom:2px; }
+  .kst-val { font-size:1rem; font-weight:800; color:var(--text); line-height:1.1; }
+  .kst-label { font-size:0.65rem; color:var(--text-soft); margin-top:2px; }
+
+  /* ====== MACRO SECTION ====== */
+  .macro-section { margin-top:16px; }
+  .macro-section-title { font-size:0.78rem; font-weight:700; color:var(--text-soft); margin-bottom:10px; }
+
+  /* Icon cards row */
+  .macro-icons { display:flex; gap:7px; margin-bottom:14px; }
+  .macro-icon-card { flex:1; border-radius:14px; padding:10px 8px; text-align:center; }
+  .macro-icon-card.carb { background:var(--yellow-light); }
+  .macro-icon-card.protein { background:var(--mint-light); }
+  .macro-icon-card.fat { background:var(--peach-light); }
+  .mic-icon { font-size:1.5rem; }
+  .mic-name { font-size:0.65rem; color:var(--text-soft); margin-top:3px; }
+  .mic-pct { font-size:1.05rem; font-weight:800; margin-top:2px; }
+  .mic-pct.carb { color:#B8860B; }
+  .mic-pct.protein { color:#2E8B7A; }
+  .mic-pct.fat { color:#CC5533; }
+  .mic-gram { font-size:0.65rem; color:var(--text-soft); margin-top:1px; }
+
+  /* Bar rows */
+  .macro-bar-item { margin-bottom:9px; }
+  .macro-bar-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; }
+  .mbl { font-size:0.76rem; font-weight:700; }
+  .mbl.carb { color:#B8860B; }
+  .mbl.protein { color:#2E8B7A; }
+  .mbl.fat { color:#CC5533; }
+  .mbr { font-size:0.73rem; color:var(--text-soft); }
+  .mbr strong { font-weight:700; }
+  .mbr .pct-val { font-weight:800; }
+  .mbr .pct-val.carb { color:#B8860B; }
+  .mbr .pct-val.protein { color:#2E8B7A; }
+  .mbr .pct-val.fat { color:#CC5533; }
+  .bar-track { height:11px; background:#EFEFEF; border-radius:99px; overflow:hidden; }
+  .bar-fill { height:100%; border-radius:99px; transition:width 0.6s cubic-bezier(.4,0,.2,1); }
+  .bar-fill.carb { background:linear-gradient(90deg,#FFD166,#F5A623); }
+  .bar-fill.protein { background:linear-gradient(90deg,#5CC8B0,#3AAFA9); }
+  .bar-fill.fat { background:linear-gradient(90deg,#FF8C69,#E05540); }
+  .bar-fill.over { background:linear-gradient(90deg,#ff6b6b,#ee0979) !important; }
+
+  /* MEAL */
+  .meal-section { margin-bottom:6px; }
+  .meal-header { display:flex; align-items:center; justify-content:space-between; padding:7px 0 5px; border-bottom:1px dashed var(--border); margin-bottom:5px; }
+  .meal-name { font-weight:700; font-size:0.88rem; display:flex; align-items:center; gap:5px; }
+  .meal-kcal { font-size:0.76rem; color:var(--text-soft); }
+  .food-item { display:flex; align-items:center; justify-content:space-between; padding:5px 0; font-size:0.8rem; }
+  .food-item .fname { flex:1; }
+  .food-item .fkcal { color:var(--peach); font-weight:600; white-space:nowrap; margin-left:6px; }
+  .food-item .fdel { color:#ccc; cursor:pointer; padding:0 5px; font-size:0.85rem; }
+  .food-item .fdel:hover { color:#ff6b6b; }
+
+  /* BTN */
+  .btn { display:inline-flex; align-items:center; gap:5px; padding:8px 15px; border-radius:50px; border:none; cursor:pointer; font-family:inherit; font-size:0.8rem; font-weight:600; transition:all 0.18s; }
+  .btn-mint { background:var(--mint); color:white; }
+  .btn-mint:hover { background:#4AB89A; transform:translateY(-1px); }
+  .btn-outline { background:white; color:var(--mint); border:2px solid var(--mint); }
+  .btn-outline:hover { background:var(--mint-light); }
+  .btn-sm { padding:5px 11px; font-size:0.75rem; }
+  .btn-full { width:100%; justify-content:center; }
+
+  /* UPLOAD */
+  .upload-area { border:2px dashed var(--mint-mid); border-radius:14px; padding:22px; text-align:center; cursor:pointer; background:var(--mint-light); transition:all 0.2s; position:relative; }
+  .upload-area:hover { border-color:var(--mint); background:#DDF5EF; }
+  .upload-area input { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; }
+  .upload-icon { font-size:2rem; margin-bottom:6px; }
+  .upload-text { font-size:0.8rem; color:var(--text-soft); }
+  .preview-img { width:100%; border-radius:12px; margin:10px 0; max-height:200px; object-fit:cover; display:none; }
+
+  /* AI */
+  .ai-result { background:var(--mint-light); border-radius:12px; padding:12px; margin-top:10px; display:none; }
+  .ai-title { font-size:0.78rem; font-weight:700; color:var(--mint); margin-bottom:8px; display:flex; gap:5px; align-items:center; }
+  .ai-food-row { display:flex; justify-content:space-between; font-size:0.8rem; padding:4px 0; border-bottom:1px solid var(--border); }
+  .ai-food-row:last-child { border:none; }
+  .ai-total { display:flex; justify-content:space-between; font-weight:700; margin-top:8px; font-size:0.86rem; color:var(--text); }
+  .thinking { text-align:center; padding:18px; display:none; }
+  .thinking-dots { display:inline-flex; gap:5px; }
+  .thinking-dots span { width:8px; height:8px; background:var(--mint); border-radius:50%; animation:bounce 1s infinite; }
+  .thinking-dots span:nth-child(2){animation-delay:0.2s}
+  .thinking-dots span:nth-child(3){animation-delay:0.4s}
+  @keyframes bounce{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-8px)}}
+
+  /* SEARCH */
+  .search-input { width:100%; padding:9px 14px; border-radius:50px; border:2px solid var(--border); font-family:inherit; font-size:0.86rem; outline:none; transition:border 0.2s; }
+  .search-input:focus { border-color:var(--mint); }
+  .search-results { max-height:200px; overflow-y:auto; margin-top:8px; }
+  .search-item { display:flex; justify-content:space-between; align-items:center; padding:8px 10px; border-radius:10px; cursor:pointer; transition:background 0.15s; font-size:0.8rem; }
+  .search-item:hover { background:var(--mint-light); }
+  .search-item .skcal { color:var(--text-soft); font-size:0.73rem; }
+  .amount-row { display:flex; gap:8px; align-items:center; margin-top:8px; }
+  .amount-input { width:75px; padding:7px 10px; border-radius:10px; border:2px solid var(--border); font-family:inherit; font-size:0.86rem; outline:none; text-align:center; }
+  .amount-input:focus { border-color:var(--mint); }
+
+  /* WATER */
+
+  /* BODY */
+  .stats-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:9px; margin-bottom:12px; }
+  .stat-input-card { border-radius:13px; padding:11px; text-align:center; }
+  .stat-label { font-size:0.7rem; color:var(--text-soft); margin-bottom:3px; }
+  .stat-field { width:100%; text-align:center; border:none; background:transparent; font-size:1.15rem; font-weight:700; color:var(--text); outline:none; font-family:inherit; }
+  .stat-unit { font-size:0.7rem; color:var(--text-soft); }
+  .chart-wrap { position:relative; height:200px; }
+
+  /* MEAL TABS */
+  .meal-tabs { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:11px; }
+  .meal-tab { padding:5px 13px; border-radius:50px; border:2px solid var(--border); font-size:0.76rem; cursor:pointer; transition:all 0.15s; background:white; color:var(--text-soft); font-weight:600; }
+  .meal-tab.active { background:var(--mint); border-color:var(--mint); color:white; }
+
+  .section-btn-row { display:flex; gap:7px; }
+  .empty { text-align:center; padding:10px 0; color:var(--text-soft); font-size:0.8rem; }
+
+  @media(max-width:380px){.stats-grid{grid-template-columns:1fr 1fr}}
+
+  /* SEARCH SECTION LABELS */
+  .results-section-label {
+    font-size:0.73rem; font-weight:700; color:var(--text-soft);
+    margin-bottom:6px; display:flex; align-items:center; gap:4px;
+  }
+
+  /* PRODUCT RESULT CARDS */
+  .product-card {
+    border:1px solid var(--border); border-radius:14px; padding:12px;
+    margin-bottom:8px; cursor:pointer; transition:all 0.18s; background:white;
+  }
+  .product-card:hover { border-color:var(--mint); background:var(--mint-light); }
+  .product-card-name { font-weight:700; font-size:0.88rem; margin-bottom:4px; }
+  .product-card-brand { font-size:0.72rem; color:var(--text-soft); margin-bottom:8px; }
+  .product-nutr-row { display:flex; gap:6px; flex-wrap:wrap; }
+  .nutr-chip {
+    padding:3px 8px; border-radius:20px; font-size:0.7rem; font-weight:700;
+  }
+  .nutr-chip.kcal { background:#FFF0EB; color:#CC5533; }
+  .nutr-chip.carb { background:var(--yellow-light); color:#B8860B; }
+  .nutr-chip.prot { background:var(--mint-light); color:#2E8B7A; }
+  .nutr-chip.fat  { background:#FFF0EB; color:#996633; }
+  .nutr-chip.serv { background:#F3F0FF; color:#6B52A6; }
+
+  /* SELECTED FOOD NUTRITION GRID */
+  .sel-nutr-grid { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:2px; }
+  .sel-nutr-chip {
+    flex:1; min-width:56px; text-align:center;
+    border-radius:10px; padding:6px 4px;
+  }
+  .sel-nutr-chip.kcal { background:#FFF0EB; }
+  .sel-nutr-chip.carb { background:var(--yellow-light); }
+  .sel-nutr-chip.prot { background:var(--mint-light); }
+  .sel-nutr-chip.fat  { background:#FFF0EB; }
+  .sel-nutr-chip .sn-val { font-size:0.9rem; font-weight:800; color:var(--text); }
+  .sel-nutr-chip .sn-lbl { font-size:0.62rem; color:var(--text-soft); margin-top:1px; }
+
+  .product-error { text-align:center; padding:14px; color:var(--peach); font-size:0.85rem; }
+
+  /* WATER STEPPER */
+  .water-glass-center { text-align:center; margin-bottom:18px; }
+  .water-visual-lg {
+    width:80px; height:130px; margin:0 auto;
+    background:var(--blue-light);
+    border-radius:0 0 24px 24px;
+    border:3px solid #82C8E8; border-top:none;
+    position:relative; overflow:hidden;
+  }
+  .water-fill-lg {
+    position:absolute; bottom:0; left:0; right:0;
+    background:linear-gradient(180deg,#82C8E8 0%,#4AAFD8 100%);
+    border-radius:0 0 20px 20px;
+    transition:height 0.5s cubic-bezier(.4,0,.2,1);
+  }
+  .water-wave {
+    position:absolute; bottom:0; left:-50%; width:200%; height:20px;
+    background:rgba(130,200,232,0.35);
+    border-radius:40%;
+    animation:wave 2.5s ease-in-out infinite;
+  }
+  @keyframes wave { 0%,100%{transform:translateX(0) scaleY(1)} 50%{transform:translateX(8%) scaleY(1.2)} }
+  .water-stepper {
+    display:flex; align-items:center; justify-content:center; gap:16px;
+  }
+  .water-step-btn {
+    width:54px; height:54px; border-radius:50%; border:none; cursor:pointer;
+    font-size:1.7rem; font-weight:300; line-height:1;
+    display:flex; align-items:center; justify-content:center;
+    transition:all 0.15s; flex-shrink:0;
+  }
+  .water-step-btn.minus {
+    background:var(--blue-light); color:#4AAFD8;
+  }
+  .water-step-btn.minus:hover { background:#c8e8f5; transform:scale(1.08); }
+  .water-step-btn.minus:active { transform:scale(0.94); }
+  .water-step-btn.plus {
+    background:#4AAFD8; color:white;
+  }
+  .water-step-btn.plus:hover { background:#3a9fc8; transform:scale(1.08); }
+  .water-step-btn.plus:active { transform:scale(0.94); }
+  .water-stepper-mid { text-align:center; min-width:110px; }
+  .water-display-num {
+    font-size:2.2rem; font-weight:800; color:#4AAFD8;
+    cursor:pointer; line-height:1.1;
+    border-bottom:2px dashed #82C8E8;
+    display:inline-block; padding:2px 8px;
+    border-radius:4px;
+    transition:background 0.15s;
+  }
+  .water-display-num:hover { background:var(--blue-light); }
+  .water-display-unit { font-size:1rem; font-weight:500; color:#82C8E8; margin-left:2px; }
+  .water-edit-input {
+    font-size:2.2rem; font-weight:800; color:#4AAFD8;
+    width:130px; text-align:center;
+    border:2px solid #4AAFD8; border-radius:10px;
+    outline:none; font-family:inherit; padding:2px 6px;
+    background:var(--blue-light);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-top">
+    <h1>🥗 다이어트 다이어리</h1>
+    <div class="today-badge" id="today-badge" style="display:none">오늘</div>
+  </div>
+  <div class="date-nav">
+    <button class="date-nav-btn" id="btn-prev" onclick="changeDate(-1)">‹</button>
+    <div class="date-display" id="date-display" onclick="openCalendar()">
+      <span class="cal-icon">📅</span>
+      <span id="date-display-text"></span>
+    </div>
+    <button class="date-nav-btn" id="btn-next" onclick="changeDate(1)">›</button>
+  </div>
+</header>
+
+<!-- CUSTOM CALENDAR POPUP -->
+<div class="cal-overlay" id="cal-overlay" onclick="onCalOverlayClick(event)">
+  <div class="cal-popup" id="cal-popup">
+    <div class="cal-header">
+      <button class="cal-nav-btn" onclick="calShiftMonth(-1)">‹</button>
+      <div class="cal-month-label" id="cal-month-label" onclick="calGoToday()">—</div>
+      <button class="cal-nav-btn" onclick="calShiftMonth(1)" id="cal-next-month-btn">›</button>
+    </div>
+    <div class="cal-dow-row">
+      <div class="cal-dow">일</div><div class="cal-dow">월</div>
+      <div class="cal-dow">화</div><div class="cal-dow">수</div>
+      <div class="cal-dow">목</div><div class="cal-dow">금</div>
+      <div class="cal-dow">토</div>
+    </div>
+    <div class="cal-grid" id="cal-grid"></div>
+    <div class="cal-footer">
+      <button class="cal-today-btn" onclick="calGoToday()">오늘로</button>
+      <button class="cal-close-btn" onclick="closeCalendar()">닫기</button>
+    </div>
+  </div>
+</div>
+
+<nav>
+  <div class="tab active" onclick="switchTab('home')"><span class="tab-icon">🏠</span>오늘</div>
+  <div class="tab" onclick="switchTab('ai')"><span class="tab-icon">📸</span>AI 분석</div>
+  <div class="tab" onclick="switchTab('search')"><span class="tab-icon">🔍</span>직접 입력</div>
+  <div class="tab" onclick="switchTab('water')"><span class="tab-icon">💧</span>수분</div>
+  <div class="tab" onclick="switchTab('body')"><span class="tab-icon">📊</span>체성분</div>
+</nav>
+
+<main>
+
+<!-- ========== HOME ========== -->
+<div class="page active" id="page-home">
+
+  <!-- Calorie card -->
+  <div class="card">
+    <div class="card-title">🔥 오늘의 칼로리</div>
+
+    <div class="kcal-hero">
+      <div class="kcal-left">
+        <div class="kcal-flame-anim" id="kcal-flame">🔥</div>
+        <div class="kcal-big-num"><span id="ring-eaten">0</span><span class="kcal-unit">kcal</span></div>
+        <div class="kcal-goal-sub">목표 1,100 kcal</div>
+      </div>
+      <svg class="kcal-arc-svg" viewBox="0 0 120 120">
+        <circle class="kcal-arc-bg" cx="60" cy="60" r="50"/>
+        <circle class="kcal-arc-fg" id="kcal-arc-fg" cx="60" cy="60" r="50" stroke-dasharray="0 314"/>
+        <circle class="kcal-arc-over" id="kcal-arc-over" cx="60" cy="60" r="50" stroke-dasharray="0 314" style="opacity:0"/>
+        <text class="kcal-arc-pct" id="kcal-arc-pct" x="60" y="54" text-anchor="middle" dominant-baseline="middle">0%</text>
+        <text class="kcal-arc-lbl" x="60" y="70" text-anchor="middle">달성</text>
+      </svg>
+    </div>
+
+    <div class="kcal-bar-wrap">
+      <div class="kcal-bar-track">
+        <div class="kcal-bar-fill" id="kcal-bar-fill" style="width:0%"></div>
+      </div>
+      <div class="kcal-bar-labels">
+        <span>0</span><span>275</span><span>550</span><span>825</span><span>1,100</span>
+      </div>
+    </div>
+
+    <div class="kcal-stats-row">
+      <div class="kcal-stat eaten">
+        <div class="kst-icon">🍽️</div>
+        <div class="kst-val" id="stat-eaten">0</div>
+        <div class="kst-label">섭취</div>
+      </div>
+      <div class="kcal-stat remain" id="remain-stat">
+        <div class="kst-icon">⚖️</div>
+        <div class="kst-val" id="stat-remain">1,100</div>
+        <div class="kst-label" id="remain-label">남은 칼로리</div>
+      </div>
+      <div class="kcal-stat goal">
+        <div class="kst-icon">🎯</div>
+        <div class="kst-val">1,100</div>
+        <div class="kst-label">목표</div>
+      </div>
+    </div>
+
+    <!-- Macro section -->
+    <div class="macro-section">
+      <div class="macro-section-title">🧬 영양소 섭취 현황</div>
+
+      <!-- Icon cards -->
+      <div class="macro-icons">
+        <div class="macro-icon-card carb">
+          <div class="mic-icon">🌾</div>
+          <div class="mic-name">탄수화물</div>
+          <div class="mic-pct carb" id="mi-carb-pct">0%</div>
+          <div class="mic-gram" id="mi-carb-gram">0 / 100g</div>
+        </div>
+        <div class="macro-icon-card protein">
+          <div class="mic-icon">🥩</div>
+          <div class="mic-name">단백질</div>
+          <div class="mic-pct protein" id="mi-prot-pct">0%</div>
+          <div class="mic-gram" id="mi-prot-gram">0 / 60g</div>
+        </div>
+        <div class="macro-icon-card fat">
+          <div class="mic-icon">🥑</div>
+          <div class="mic-name">지방</div>
+          <div class="mic-pct fat" id="mi-fat-pct">0%</div>
+          <div class="mic-gram" id="mi-fat-gram">0 / 30g</div>
+        </div>
+      </div>
+
+      <!-- Bars -->
+      <div class="macro-bar-item">
+        <div class="macro-bar-header">
+          <span class="mbl carb">🌾 탄수화물</span>
+          <span class="mbr"><strong id="bc-g">0g</strong> / 100g &nbsp;<span class="pct-val carb" id="bc-p">0%</span></span>
+        </div>
+        <div class="bar-track"><div class="bar-fill carb" id="bar-carb" style="width:0%"></div></div>
+      </div>
+      <div class="macro-bar-item">
+        <div class="macro-bar-header">
+          <span class="mbl protein">🥩 단백질</span>
+          <span class="mbr"><strong id="bp-g">0g</strong> / 60g &nbsp;<span class="pct-val protein" id="bp-p">0%</span></span>
+        </div>
+        <div class="bar-track"><div class="bar-fill protein" id="bar-prot" style="width:0%"></div></div>
+      </div>
+      <div class="macro-bar-item">
+        <div class="macro-bar-header">
+          <span class="mbl fat">🥑 지방</span>
+          <span class="mbr"><strong id="bf-g">0g</strong> / 30g &nbsp;<span class="pct-val fat" id="bf-p">0%</span></span>
+        </div>
+        <div class="bar-track"><div class="bar-fill fat" id="bar-fat" style="width:0%"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Meal log -->
+  <div class="card">
+    <div class="card-title">🍽️ 식단 기록</div>
+    <div id="meal-log-container"></div>
+    <div class="section-btn-row" style="margin-top:10px" id="add-btns">
+      <button class="btn btn-outline btn-sm" onclick="switchTab('ai')">📸 사진으로 추가</button>
+      <button class="btn btn-outline btn-sm" onclick="switchTab('search')">🔍 직접 추가</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- ========== AI ========== -->
+<div class="page" id="page-ai">
+  <div class="card">
+    <div class="card-title">📸 AI 음식 분석</div>
+    <div class="meal-tabs">
+      <div class="meal-tab active" data-meal="아침" onclick="selectMealAI(this)">🌅 아침</div>
+      <div class="meal-tab" data-meal="점심" onclick="selectMealAI(this)">☀️ 점심</div>
+      <div class="meal-tab" data-meal="저녁" onclick="selectMealAI(this)">🌙 저녁</div>
+      <div class="meal-tab" data-meal="간식" onclick="selectMealAI(this)">🍎 간식</div>
+    </div>
+    <div class="upload-area" onclick="document.getElementById('food-img-input').click()">
+      <input type="file" id="food-img-input" accept="image/*" onchange="handleImageUpload(event)">
+      <div class="upload-icon">📷</div>
+      <div class="upload-text">음식 사진을 올려주세요<br><small>탭하여 촬영 또는 갤러리에서 선택</small></div>
+    </div>
+    <img class="preview-img" id="preview-img" src="" alt="preview">
+    <div class="thinking" id="ai-thinking">
+      <div class="thinking-dots"><span></span><span></span><span></span></div>
+      <p style="margin-top:10px;font-size:0.8rem;color:var(--text-soft)">AI가 음식을 분석하고 있어요...</p>
+    </div>
+    <div class="ai-result" id="ai-result">
+      <div class="ai-title">🤖 AI 분석 결과</div>
+      <div id="ai-foods-list"></div>
+      <div class="ai-total"><span>총 칼로리</span><span id="ai-total-kcal">0 kcal</span></div>
+      <button class="btn btn-mint btn-full" style="margin-top:11px" onclick="addAIResultToLog()">➕ 식단에 추가하기</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== SEARCH ========== -->
+<div class="page" id="page-search">
+  <div class="card">
+    <div class="card-title">🔍 음식 검색</div>
+    <div class="meal-tabs">
+      <div class="meal-tab active" data-meal="아침" onclick="selectMealSearch(this)">🌅 아침</div>
+      <div class="meal-tab" data-meal="점심" onclick="selectMealSearch(this)">☀️ 점심</div>
+      <div class="meal-tab" data-meal="저녁" onclick="selectMealSearch(this)">🌙 저녁</div>
+      <div class="meal-tab" data-meal="간식" onclick="selectMealSearch(this)">🍎 간식</div>
+    </div>
+
+    <!-- unified search -->
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:4px">
+      <input class="search-input" id="food-search-input"
+        placeholder="음식명, 브랜드 제품명 모두 검색..."
+        style="flex:1;margin-bottom:0"
+        oninput="onSearchInput(this.value)"
+        onkeydown="if(event.key==='Enter')triggerAISearch()">
+      <button class="btn btn-mint btn-sm" style="white-space:nowrap;flex-shrink:0" id="search-btn" onclick="triggerAISearch()">검색</button>
+    </div>
+    <div style="font-size:0.73rem;color:var(--text-soft);margin-bottom:10px">
+      💡 일반 음식은 바로 표시, 브랜드 제품은 검색 버튼을 눌러주세요
+    </div>
+
+    <!-- Local DB results -->
+    <div id="local-results-section" style="display:none">
+      <div class="results-section-label">📋 기본 음식</div>
+      <div id="search-results"></div>
+    </div>
+
+    <!-- Divider shown when both have results -->
+    <div id="results-divider" style="display:none;border-top:1px dashed var(--border);margin:10px 0"></div>
+
+    <!-- AI product results -->
+    <div id="ai-results-section" style="display:none">
+      <div class="results-section-label">🤖 시중 제품</div>
+      <div id="ai-product-thinking" style="display:none;text-align:center;padding:14px 0">
+        <div class="thinking-dots"><span></span><span></span><span></span></div>
+        <p style="margin-top:8px;font-size:0.78rem;color:var(--text-soft)">시중 제품 검색 중...</p>
+      </div>
+      <div id="ai-product-results"></div>
+    </div>
+
+    <!-- Selected panel (shared) -->
+    <div id="selected-food-panel" style="display:none;margin-top:11px;padding:13px;background:var(--mint-light);border-radius:14px;">
+      <div style="font-weight:700;font-size:0.95rem;margin-bottom:3px" id="sel-food-name"></div>
+      <div style="font-size:0.73rem;color:var(--text-soft);margin-bottom:10px" id="sel-food-info"></div>
+      <div class="sel-nutr-grid" id="sel-nutr-grid"></div>
+      <div class="amount-row" style="margin-top:10px">
+        <input class="amount-input" type="number" id="amount-input" value="100" min="1" oninput="updateCalcKcal()">
+        <span id="sel-food-unit" style="font-size:0.8rem;color:var(--text-soft)">g</span>
+        <span style="font-size:0.85rem;font-weight:800;color:var(--peach)" id="calc-kcal">— kcal</span>
+        <button class="btn btn-mint btn-sm" onclick="addManualFood()">➕ 추가</button>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- ========== WATER ========== -->
+<div class="page" id="page-water">
+  <div class="card">
+    <div class="card-title">💧 수분 섭취</div>
+
+    <!-- Glass visual -->
+    <div class="water-glass-center">
+      <div class="water-visual-lg">
+        <div class="water-fill-lg" id="water-fill"></div>
+        <div class="water-wave"></div>
+      </div>
+      <div class="water-pct" id="water-pct">0%</div>
+      <div style="font-size:0.74rem;color:var(--text-soft);margin-top:2px">목표 1,500ml</div>
+    </div>
+
+    <!-- Stepper -->
+    <div class="water-stepper">
+      <button class="water-step-btn minus" onclick="addWater(-120)">－</button>
+      <div class="water-stepper-mid">
+        <div id="water-display" class="water-display-num" onclick="startWaterEdit()" title="탭해서 직접 입력">
+          <span id="water-ml">0</span><span class="water-display-unit">ml</span>
+        </div>
+        <input type="number" id="water-edit-input" class="water-edit-input"
+          style="display:none" min="0" max="3000"
+          oninput="onWaterEditInput(this.value)"
+          onblur="endWaterEdit()"
+          onkeydown="if(event.key==='Enter')this.blur();if(event.key==='Escape')cancelWaterEdit()">
+      </div>
+      <button class="water-step-btn plus" onclick="addWater(120)">＋</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">📅 최근 7일 수분</div>
+    <div class="chart-wrap"><canvas id="water-chart"></canvas></div>
+  </div>
+</div>
+
+<!-- ========== BODY ========== -->
+<div class="page" id="page-body">
+  <div class="card">
+    <div class="card-title">📏 체성분 기록</div>
+    <div class="stats-grid">
+      <div class="stat-input-card" style="background:var(--mint-light)">
+        <div class="stat-label">몸무게</div>
+        <input class="stat-field" type="number" id="inp-weight" placeholder="--" step="0.1">
+        <div class="stat-unit">kg</div>
+      </div>
+      <div class="stat-input-card" style="background:var(--lavender-light)">
+        <div class="stat-label">골격근량</div>
+        <input class="stat-field" type="number" id="inp-muscle" placeholder="--" step="0.1">
+        <div class="stat-unit">kg</div>
+      </div>
+      <div class="stat-input-card" style="background:var(--peach-light)">
+        <div class="stat-label">체지방률</div>
+        <input class="stat-field" type="number" id="inp-fat" placeholder="--" step="0.1">
+        <div class="stat-unit">%</div>
+      </div>
+    </div>
+    <button class="btn btn-mint btn-full" onclick="saveBodyStats()">💾 기록 저장</button>
+  </div>
+  <div class="card"><div class="card-title">📈 체중 변화</div><div class="chart-wrap"><canvas id="weight-chart"></canvas></div></div>
+  <div class="card"><div class="card-title">💪 골격근량 변화</div><div class="chart-wrap"><canvas id="muscle-chart"></canvas></div></div>
+  <div class="card"><div class="card-title">🔥 체지방률 변화</div><div class="chart-wrap"><canvas id="fat-chart"></canvas></div></div>
+</div>
+
+</main>
+
+<script>
+// =====================================================
+// CONSTANTS
+// =====================================================
+const KCAL_GOAL = 1100;
+const WATER_GOAL = 1500;
+const MACRO_GOALS = { carb:100, protein:60, fat:30 };
+
+// =====================================================
+// DATE STATE
+// =====================================================
+const REAL_TODAY = new Date().toISOString().slice(0,10);
+let viewDate = REAL_TODAY;
+
+function isToday() { return viewDate === REAL_TODAY; }
+
+function fmtDate(ds) {
+  const d = new Date(ds + 'T12:00:00');
+  return d.toLocaleDateString('ko-KR',{month:'long',day:'numeric',weekday:'short'});
+}
+
+function updateDateUI() {
+  document.getElementById('date-display-text').textContent = fmtDate(viewDate);
+  document.getElementById('today-badge').style.display = isToday() ? 'block' : 'none';
+  document.getElementById('btn-next').disabled = isToday();
+}
+
+function changeDate(delta) {
+  const d = new Date(viewDate + 'T12:00:00');
+  d.setDate(d.getDate() + delta);
+  const nd = d.toISOString().slice(0,10);
+  if (nd > REAL_TODAY) return;
+  viewDate = nd;
+  updateDateUI();
+  loadDayData();
+}
+
+function onDatePicked(val) {
+  if (!val || val > REAL_TODAY) return;
+  viewDate = val;
+  updateDateUI();
+  loadDayData();
+}
+
+// =====================================================
+// CUSTOM CALENDAR
+// =====================================================
+let calYear, calMonth; // currently displayed month in calendar
+
+function openCalendar() {
+  const d = new Date(viewDate + 'T12:00:00');
+  calYear = d.getFullYear();
+  calMonth = d.getMonth();
+  renderCalGrid();
+  document.getElementById('cal-overlay').classList.add('open');
+}
+
+function closeCalendar() {
+  document.getElementById('cal-overlay').classList.remove('open');
+}
+
+function onCalOverlayClick(e) {
+  if (e.target === document.getElementById('cal-overlay')) closeCalendar();
+}
+
+function calShiftMonth(delta) {
+  calMonth += delta;
+  if (calMonth < 0) { calMonth = 11; calYear--; }
+  if (calMonth > 11) { calMonth = 0; calYear++; }
+  renderCalGrid();
+}
+
+function calGoToday() {
+  const now = new Date(REAL_TODAY + 'T12:00:00');
+  calYear = now.getFullYear();
+  calMonth = now.getMonth();
+  renderCalGrid();
+  // also select today
+  calSelectDate(REAL_TODAY);
+}
+
+function calSelectDate(ds) {
+  if (ds > REAL_TODAY) return;
+  viewDate = ds;
+  updateDateUI();
+  loadDayData();
+  closeCalendar();
+}
+
+function renderCalGrid() {
+  const today = new Date(REAL_TODAY + 'T12:00:00');
+  const todayStr = REAL_TODAY;
+  const all = getAll();
+
+  // Month label
+  const monthNames = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+  document.getElementById('cal-month-label').textContent = `${calYear}년 ${monthNames[calMonth]}`;
+
+  // Disable next-month button if already at current month
+  const nowMonth = today.getMonth(), nowYear = today.getFullYear();
+  document.getElementById('cal-next-month-btn').disabled =
+    (calYear > nowYear) || (calYear === nowYear && calMonth >= nowMonth);
+
+  // Build days
+  const firstDay = new Date(calYear, calMonth, 1).getDay(); // 0=Sun
+  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+  const grid = document.getElementById('cal-grid');
+
+  let html = '';
+  // Empty cells before first day
+  for (let i = 0; i < firstDay; i++) {
+    html += '<div class="cal-day cal-empty"></div>';
+  }
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const ds = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    const isFuture = ds > todayStr;
+    const isSelected = ds === viewDate;
+    const isT = ds === todayStr;
+    const dow = (firstDay + day - 1) % 7; // 0=Sun, 6=Sat
+    const isSun = dow === 0;
+    const isSat = dow === 6;
+
+    // Check if there's data recorded
+    const hasData = !!(all[ds] && (
+      Object.values(all[ds].meals||{}).some(a=>a.length>0) ||
+      (all[ds].water||0) > 0
+    ));
+
+    let cls = 'cal-day';
+    if (isFuture) cls += ' cal-future';
+    if (isSelected) cls += ' cal-selected';
+    if (isT) cls += ' cal-today';
+    if (hasData && !isSelected) cls += ' has-data';
+    if (isSun) cls += ' cal-sun';
+    if (isSat) cls += ' cal-sat';
+
+    const clickHandler = isFuture ? '' : `onclick="calSelectDate('${ds}')"`;
+    html += `<div class="${cls}" ${clickHandler}>${day}</div>`;
+  }
+
+  grid.innerHTML = html;
+}
+
+// =====================================================
+// STORAGE — all keyed by date; body history is __body__
+// =====================================================
+function getAll() {
+  try { return JSON.parse(localStorage.getItem('diet_v2')||'{}'); } catch { return {}; }
+}
+function setAll(d) { localStorage.setItem('diet_v2', JSON.stringify(d)); }
+
+function getDayData(date) {
+  const all = getAll();
+  return all[date] || { meals:{아침:[],점심:[],저녁:[],간식:[]}, water:0 };
+}
+function saveDayData(date, data) {
+  const all = getAll();
+  all[date] = data;
+  setAll(all);
+}
+function getBodyHistory() {
+  return getAll()['__body__'] || [];
+}
+function saveBodyHistory(hist) {
+  const all = getAll();
+  all['__body__'] = hist;
+  setAll(all);
+}
+function getWaterHistory() {
+  const all = getAll();
+  return Object.entries(all)
+    .filter(([k]) => k!=='__body__' && /^\d{4}-\d{2}-\d{2}$/.test(k))
+    .map(([date,d]) => ({date, ml: d.water||0}))
+    .sort((a,b)=>a.date.localeCompare(b.date));
+}
+
+let dayData = getDayData(viewDate);
+
+function loadDayData() {
+  dayData = getDayData(viewDate);
+  updateSummary();
+  updateWaterUI();
+  renderMealLog();
+}
+
+// =====================================================
+// TABS
+// =====================================================
+function switchTab(id) {
+  document.querySelectorAll('.tab').forEach((t,i)=>{
+    t.classList.toggle('active',['home','ai','search','water','body'][i]===id);
+  });
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  if (id==='body') renderBodyCharts();
+  if (id==='water') renderWaterChart();
+}
+
+// =====================================================
+// SUMMARY + MACROS
+// =====================================================
+function totalEaten() {
+  let kcal=0,carb=0,protein=0,fat=0;
+  Object.values(dayData.meals).forEach(arr=>arr.forEach(f=>{
+    kcal+=f.kcal||0; carb+=f.carb||0; protein+=f.protein||0; fat+=f.fat||0;
+  }));
+  return {kcal,carb,protein,fat};
+}
+
+function updateSummary() {
+  const {kcal,carb,protein,fat} = totalEaten();
+  const pctRaw = kcal / KCAL_GOAL * 100;
+  const pct = Math.round(pctRaw);
+  const isOver = kcal > KCAL_GOAL;
+  const remain = Math.abs(KCAL_GOAL - kcal);
+
+  // ---- Big number ----
+  document.getElementById('ring-eaten').textContent = Math.round(kcal).toLocaleString();
+
+  // ---- Arc SVG (circumference = 2π×50 ≈ 314) ----
+  const circ = 314;
+  const arcFg = document.getElementById('kcal-arc-fg');
+  const arcOver = document.getElementById('kcal-arc-over');
+  const arcPct = document.getElementById('kcal-arc-pct');
+  if (!isOver) {
+    arcFg.setAttribute('stroke-dasharray', `${Math.min(pctRaw,100)/100*circ} ${circ}`);
+    arcFg.style.stroke = pct>=80 ? '#FF8C69' : '#5CC8B0';
+    arcOver.style.opacity = '0';
+  } else {
+    arcFg.setAttribute('stroke-dasharray', `${circ} ${circ}`);
+    arcFg.style.stroke = '#FF8C69';
+    // over portion wraps from 0
+    const overPct = Math.min((pctRaw-100)/100, 0.5);
+    arcOver.setAttribute('stroke-dasharray', `${overPct*circ} ${circ}`);
+    arcOver.style.opacity = '1';
+  }
+  arcPct.textContent = pct + '%';
+  arcPct.style.fill = isOver ? '#FF4757' : (pct>=80 ? '#CC5533' : 'var(--text)');
+
+  // ---- Bar ----
+  const barFill = document.getElementById('kcal-bar-fill');
+  barFill.style.width = Math.min(100, pctRaw) + '%';
+  barFill.className = 'kcal-bar-fill' + (isOver ? ' danger' : '');
+  // gradient position shifts as fills up
+  barFill.style.backgroundPosition = (100 - pctRaw) + '% 0';
+
+  // ---- Stats row ----
+  document.getElementById('stat-eaten').textContent = Math.round(kcal).toLocaleString();
+  document.getElementById('stat-remain').textContent = remain.toLocaleString();
+  document.getElementById('remain-label').textContent = isOver ? '초과 칼로리' : '남은 칼로리';
+  const remainStat = document.getElementById('remain-stat');
+  remainStat.className = 'kcal-stat remain' + (isOver ? '' : ' done');
+
+  // ---- Flame animation ----
+  const flame = document.getElementById('kcal-flame');
+  if (kcal === 0) { flame.textContent = '🕯️'; flame.className = 'kcal-flame-anim cool'; }
+  else if (isOver) { flame.textContent = '🔥🔥'; flame.className = 'kcal-flame-anim'; }
+  else { flame.textContent = '🔥'; flame.className = 'kcal-flame-anim'; }
+
+  // ---- Macros ----
+  function setPct(iconId, gramId, barId, barGId, barPId, val, goal, cls) {
+    const p = Math.round(val/goal*100);
+    const bw = Math.min(100, val/goal*100);
+    document.getElementById(iconId).textContent = p+'%';
+    document.getElementById(gramId).textContent = Math.round(val)+' / '+goal+'g';
+    const barEl = document.getElementById(barId);
+    barEl.style.width = bw+'%';
+    barEl.className = 'bar-fill '+cls+(val>goal?' over':'');
+    document.getElementById(barGId).textContent = Math.round(val)+'g';
+    document.getElementById(barPId).textContent = p+'%';
+  }
+  setPct('mi-carb-pct','mi-carb-gram','bar-carb','bc-g','bc-p', carb, MACRO_GOALS.carb, 'carb');
+  setPct('mi-prot-pct','mi-prot-gram','bar-prot','bp-g','bp-p', protein, MACRO_GOALS.protein, 'protein');
+  setPct('mi-fat-pct','mi-fat-gram','bar-fat','bf-g','bf-p', fat, MACRO_GOALS.fat, 'fat');
+
+  renderMealLog();
+  saveDayData(viewDate, dayData);
+}
+
+// =====================================================
+// MEAL LOG
+// =====================================================
+function renderMealLog() {
+  const c = document.getElementById('meal-log-container');
+  const meals = ['아침','점심','저녁','간식'];
+  const icons = ['🌅','☀️','🌙','🍎'];
+  c.innerHTML = meals.map((meal,mi)=>{
+    const items = dayData.meals[meal]||[];
+    const mk = items.reduce((s,f)=>s+(f.kcal||0),0);
+    return `<div class="meal-section">
+      <div class="meal-header">
+        <span class="meal-name">${icons[mi]} ${meal}</span>
+        <span class="meal-kcal">${Math.round(mk)} kcal</span>
+      </div>
+      ${items.length===0?'<div class="empty">기록 없음</div>':
+        items.map((f,fi)=>`<div class="food-item">
+          <span class="fname">${f.name}${f.amount?` <small style="color:var(--text-soft)">(${f.amount}${f.unit||'g'})</small>`:''}</span>
+          <span class="fkcal">${Math.round(f.kcal)} kcal</span>
+          ${`<span class="fdel" onclick="deleteFood('${meal}',${fi})">✕</span>`}
+        </div>`).join('')
+      }
+    </div>`;
+  }).join('');
+}
+
+function deleteFood(meal,idx) {
+  dayData.meals[meal].splice(idx,1);
+  updateSummary();
+}
+
+// =====================================================
+// AI ANALYSIS
+// =====================================================
+let aiSelectedMeal = '아침';
+let aiResultFoods = [];
+
+function selectMealAI(el) {
+  document.querySelectorAll('#page-ai .meal-tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  aiSelectedMeal = el.dataset.meal;
+}
+
+function handleImageUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = document.getElementById('preview-img');
+    img.src = e.target.result;
+    img.style.display = 'block';
+    document.getElementById('ai-result').style.display = 'none';
+    analyzeImage(e.target.result.split(',')[1], file.type||'image/jpeg');
+  };
+  reader.readAsDataURL(file);
+}
+
+async function analyzeImage(base64, mediaType) {
+  const thinking = document.getElementById('ai-thinking');
+  const resultDiv = document.getElementById('ai-result');
+  thinking.style.display = 'block';
+  resultDiv.style.display = 'none';
+  try {
+    const res = await fetch('https://diet-diary.eunnjin.workers.dev',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514', max_tokens:1000,
+        messages:[{role:'user',content:[
+          {type:'image',source:{type:'base64',media_type:mediaType,data:base64}},
+          {type:'text',text:`이 음식 사진을 분석해주세요. JSON만 응답(다른 텍스트 없이):
+{"foods":[{"name":"음식명","amount":숫자,"unit":"g 또는 개 또는 ml","kcal":숫자,"carb":숫자,"protein":숫자,"fat":숫자}],"total_kcal":숫자}`}
+        ]}]
+      })
+    });
+    const data = await res.json();
+    const text = data.content.map(c=>c.text||'').join('');
+    const parsed = JSON.parse(text.replace(/```json|```/g,'').trim());
+    aiResultFoods = parsed.foods||[];
+    document.getElementById('ai-foods-list').innerHTML = aiResultFoods.map(f=>
+      `<div class="ai-food-row"><span>${f.name} <small style="color:var(--text-soft)">(${f.amount}${f.unit})</small></span>
+      <span style="font-weight:600;color:var(--peach)">${Math.round(f.kcal)} kcal</span></div>`
+    ).join('');
+    document.getElementById('ai-total-kcal').textContent = Math.round(parsed.total_kcal)+' kcal';
+    thinking.style.display = 'none';
+    resultDiv.style.display = 'block';
+  } catch(e) {
+    thinking.style.display = 'none';
+    resultDiv.innerHTML = `<div class="ai-title" style="color:var(--peach)">⚠️ 분석 실패 — 다시 시도해주세요</div>`;
+    resultDiv.style.display = 'block';
+  }
+}
+
+function addAIResultToLog() {
+  aiResultFoods.forEach(f=>{
+    dayData.meals[aiSelectedMeal].push({name:f.name,amount:f.amount,unit:f.unit,kcal:f.kcal,carb:f.carb||0,protein:f.protein||0,fat:f.fat||0});
+  });
+  updateSummary();
+  document.getElementById('preview-img').style.display='none';
+  document.getElementById('ai-result').style.display='none';
+  document.getElementById('food-img-input').value='';
+  aiResultFoods=[];
+  switchTab('home');
+}
+
+// =====================================================
+// FOOD DB
+// =====================================================
+const FOOD_DB=[
+  {name:'흰쌀밥',kcal:130,carb:28,protein:2.5,fat:0.3,unit:'g'},
+  {name:'현미밥',kcal:111,carb:23,protein:2.6,fat:0.9,unit:'g'},
+  {name:'잡곡밥',kcal:120,carb:25,protein:2.8,fat:0.5,unit:'g'},
+  {name:'김치찌개',kcal:54,carb:3.5,protein:4.2,fat:2.8,unit:'g'},
+  {name:'된장찌개',kcal:44,carb:3.8,protein:3.5,fat:1.5,unit:'g'},
+  {name:'제육볶음',kcal:195,carb:5,protein:15,fat:12,unit:'g'},
+  {name:'불고기',kcal:180,carb:8,protein:16,fat:9,unit:'g'},
+  {name:'삼겹살',kcal:290,carb:0,protein:17,fat:25,unit:'g'},
+  {name:'닭가슴살',kcal:109,carb:0,protein:23,fat:1.2,unit:'g'},
+  {name:'연어',kcal:142,carb:0,protein:20,fat:7,unit:'g'},
+  {name:'고등어',kcal:183,carb:0,protein:18,fat:12,unit:'g'},
+  {name:'계란',kcal:68,carb:0.4,protein:5.9,fat:4.6,unit:'개'},
+  {name:'두부',kcal:76,carb:2.4,protein:8.1,fat:4.2,unit:'g'},
+  {name:'김',kcal:187,carb:28,protein:28,fat:1.5,unit:'g'},
+  {name:'라면',kcal:140,carb:20,protein:3,fat:5.8,unit:'g'},
+  {name:'떡볶이',kcal:133,carb:24,protein:3,fat:3,unit:'g'},
+  {name:'순대',kcal:181,carb:14,protein:9,fat:10,unit:'g'},
+  {name:'짜장면',kcal:165,carb:26,protein:5.5,fat:5,unit:'g'},
+  {name:'짬뽕',kcal:95,carb:12,protein:6,fat:3,unit:'g'},
+  {name:'김밥',kcal:168,carb:28,protein:5,fat:4,unit:'g'},
+  {name:'비빔밥',kcal:125,carb:20,protein:5,fat:3.5,unit:'g'},
+  {name:'냉면',kcal:115,carb:22,protein:3.5,fat:1.5,unit:'g'},
+  {name:'삼각김밥',kcal:190,carb:38,protein:4,fat:2.5,unit:'개'},
+  {name:'바나나',kcal:89,carb:23,protein:1.1,fat:0.3,unit:'개'},
+  {name:'사과',kcal:52,carb:14,protein:0.3,fat:0.2,unit:'개'},
+  {name:'귤',kcal:47,carb:12,protein:0.8,fat:0.3,unit:'개'},
+  {name:'딸기',kcal:32,carb:7.7,protein:0.7,fat:0.3,unit:'g'},
+  {name:'우유',kcal:61,carb:4.7,protein:3.2,fat:3.3,unit:'ml'},
+  {name:'요거트',kcal:59,carb:3.6,protein:10,fat:0.4,unit:'g'},
+  {name:'아메리카노',kcal:5,carb:0.5,protein:0.3,fat:0,unit:'ml'},
+  {name:'라떼',kcal:90,carb:9,protein:5,fat:3.5,unit:'ml'},
+  {name:'콜라',kcal:44,carb:11,protein:0,fat:0,unit:'ml'},
+  {name:'고구마',kcal:86,carb:20,protein:1.6,fat:0.1,unit:'g'},
+  {name:'감자',kcal:77,carb:17,protein:2,fat:0.1,unit:'g'},
+  {name:'브로콜리',kcal:34,carb:7,protein:2.8,fat:0.4,unit:'g'},
+  {name:'시금치',kcal:23,carb:3.6,protein:2.9,fat:0.4,unit:'g'},
+  {name:'상추',kcal:17,carb:2.9,protein:1.4,fat:0.3,unit:'g'},
+  {name:'오이',kcal:16,carb:3.6,protein:0.7,fat:0.1,unit:'g'},
+  {name:'토마토',kcal:18,carb:3.9,protein:0.9,fat:0.2,unit:'g'},
+  {name:'아보카도',kcal:160,carb:9,protein:2,fat:15,unit:'g'},
+  {name:'견과류 믹스',kcal:607,carb:16,protein:19,fat:53,unit:'g'},
+  {name:'프로틴바',kcal:200,carb:22,protein:20,fat:6,unit:'개'},
+  {name:'식빵',kcal:264,carb:49,protein:9,fat:3.6,unit:'g'},
+  {name:'크래커',kcal:440,carb:73,protein:7,fat:13,unit:'g'},
+  {name:'초콜릿',kcal:535,carb:60,protein:5,fat:30,unit:'g'},
+];
+
+let searchSelected=null, searchMeal='아침', lastQuery='';
+
+function selectMealSearch(el) {
+  document.querySelectorAll('#page-search .meal-tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  searchMeal=el.dataset.meal;
+}
+
+// ── Fuzzy search helpers ──────────────────────────────
+function normalize(s) {
+  // remove spaces and lowercase
+  return s.replace(/\s+/g, '').toLowerCase();
+}
+
+function fuzzyScore(name, query) {
+  const n = normalize(name);
+  const q = normalize(query);
+  if (!q) return 0;
+
+  // Exact match (after normalization)
+  if (n === q) return 100;
+  // Contains full query
+  if (n.includes(q)) return 90;
+  // All chars of query appear in order (subsequence)
+  let ni = 0, qi = 0, consecutive = 0;
+  while (ni < n.length && qi < q.length) {
+    if (n[ni] === q[qi]) { qi++; consecutive++; } else { consecutive = 0; }
+    ni++;
+  }
+  if (qi === q.length) return 60 + consecutive;
+
+  // Partial token match — check if any slice of query is in name
+  for (let len = q.length - 1; len >= 2; len--) {
+    for (let start = 0; start <= q.length - len; start++) {
+      if (n.includes(q.slice(start, start + len))) return 30 + len;
+    }
+  }
+
+  // Levenshtein distance for short strings (typo tolerance)
+  if (q.length <= 6 && n.length <= 10) {
+    const dist = levenshtein(n, q);
+    if (dist <= 1) return 50;
+    if (dist <= 2) return 25;
+  }
+
+  return 0;
+}
+
+function levenshtein(a, b) {
+  const dp = Array.from({length: a.length + 1}, (_, i) =>
+    Array.from({length: b.length + 1}, (_, j) => i === 0 ? j : j === 0 ? i : 0)
+  );
+  for (let i = 1; i <= a.length; i++)
+    for (let j = 1; j <= b.length; j++)
+      dp[i][j] = a[i-1] === b[j-1]
+        ? dp[i-1][j-1]
+        : 1 + Math.min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1]);
+  return dp[a.length][b.length];
+}
+
+function fuzzySearchDB(query) {
+  return FOOD_DB
+    .map(f => ({ f, score: fuzzyScore(f.name, query) }))
+    .filter(x => x.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 8)
+    .map(x => x.f);
+}
+
+// ── Unified input handler (shows local results instantly) ─────────────
+function onSearchInput(q) {
+  lastQuery = q.trim();
+  document.getElementById('selected-food-panel').style.display = 'none';
+
+  const localSection = document.getElementById('local-results-section');
+  const resultsEl    = document.getElementById('search-results');
+
+  if (!lastQuery) {
+    localSection.style.display = 'none';
+    resultsEl.innerHTML = '';
+    hideAISection();
+    return;
+  }
+
+  const found = fuzzySearchDB(lastQuery);
+
+  if (found.length) {
+    resultsEl.innerHTML = found.map(f =>
+      `<div class="search-item" onclick="selectLocalFood(${FOOD_DB.indexOf(f)})">
+        <span>${f.name}</span>
+        <span class="skcal">100${f.unit}당 ${f.kcal} kcal</span>
+      </div>`
+    ).join('');
+    localSection.style.display = 'block';
+  } else {
+    localSection.style.display = 'none';
+    resultsEl.innerHTML = '';
+  }
+
+  // Reset AI section when query changes
+  hideAISection();
+  updateDivider();
+}
+
+function hideAISection() {
+  document.getElementById('ai-results-section').style.display = 'none';
+  document.getElementById('ai-product-results').innerHTML = '';
+  document.getElementById('ai-product-thinking').style.display = 'none';
+  updateDivider();
+}
+
+function updateDivider() {
+  const localVis = document.getElementById('local-results-section').style.display !== 'none';
+  const aiVis    = document.getElementById('ai-results-section').style.display !== 'none';
+  document.getElementById('results-divider').style.display = (localVis && aiVis) ? 'block' : 'none';
+}
+
+// ── Search button: run AI search ──────────────────────────────────────
+async function triggerAISearch() {
+  const q = lastQuery || document.getElementById('food-search-input').value.trim();
+  if (!q) return;
+  lastQuery = q;
+
+  const aiSection  = document.getElementById('ai-results-section');
+  const thinking   = document.getElementById('ai-product-thinking');
+  const resultsEl  = document.getElementById('ai-product-results');
+
+  aiSection.style.display = 'block';
+  thinking.style.display  = 'block';
+  resultsEl.innerHTML     = '';
+  document.getElementById('selected-food-panel').style.display = 'none';
+  updateDivider();
+
+  try {
+    const res = await fetch('https://diet-diary.eunnjin.workers.dev', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:1000,
+        messages:[{role:'user', content:
+`"${q}"와 관련된 한국 시중 판매 식품의 영양성분을 알려주세요.
+브랜드 제품(예: 오리온 초코파이, 빙그레 바나나맛우유)이면 정확한 제품명으로, 일반 식품이면 대표적인 제품들로 최대 4개까지 알려주세요.
+
+반드시 아래 JSON 형식으로만 응답 (다른 텍스트 없이):
+{"products":[{"name":"제품명","brand":"브랜드명","serving_size":숫자,"serving_unit":"g 또는 ml","kcal_per_serving":숫자,"carb_per_serving":숫자,"protein_per_serving":숫자,"fat_per_serving":숫자,"kcal_per_100":숫자,"carb_per_100":숫자,"protein_per_100":숫자,"fat_per_100":숫자}]}`
+        }]
+      })
+    });
+    const data = await res.json();
+    const text = data.content.map(c=>c.text||'').join('');
+    const parsed = JSON.parse(text.replace(/```json|```/g,'').trim());
+    window._aiProducts = parsed.products || [];
+
+    if (!window._aiProducts.length) {
+      resultsEl.innerHTML = '<div class="product-error">😅 제품 정보를 찾지 못했어요.</div>';
+    } else {
+      resultsEl.innerHTML = window._aiProducts.map((p,i) => `
+        <div class="product-card" onclick="selectProduct(${i})">
+          <div class="product-card-name">${p.name}</div>
+          <div class="product-card-brand">${p.brand} · 1회 ${p.serving_size}${p.serving_unit}</div>
+          <div class="product-nutr-row">
+            <span class="nutr-chip kcal">🔥 ${p.kcal_per_serving}kcal</span>
+            <span class="nutr-chip carb">탄 ${p.carb_per_serving}g</span>
+            <span class="nutr-chip prot">단 ${p.protein_per_serving}g</span>
+            <span class="nutr-chip fat">지 ${p.fat_per_serving}g</span>
+          </div>
+        </div>`).join('');
+    }
+  } catch(e) {
+    resultsEl.innerHTML = '<div class="product-error">⚠️ 오류가 발생했어요. 다시 시도해주세요.</div>';
+  }
+  thinking.style.display = 'none';
+  updateDivider();
+}
+
+function selectLocalFood(idx) {
+  const f = FOOD_DB[idx];
+  _applySelectedFood(f.name, `100${f.unit} 기준`, f, f.unit, (f.unit==='개'||f.unit==='ml') ? 1 : 100);
+}
+
+function selectProduct(idx) {
+  const p = window._aiProducts[idx];
+  const f = { kcal:p.kcal_per_100, carb:p.carb_per_100, protein:p.protein_per_100, fat:p.fat_per_100 };
+  _applySelectedFood(p.name, `${p.brand} · 1회 ${p.serving_size}${p.serving_unit} (${p.kcal_per_serving}kcal)`, f, p.serving_unit, p.serving_size);
+}
+
+function _applySelectedFood(name, infoText, f, unit, defaultAmt) {
+  searchSelected = f;
+  document.getElementById('sel-food-name').textContent = name;
+  document.getElementById('sel-food-info').textContent = infoText;
+  document.getElementById('sel-food-unit').textContent = unit;
+  document.getElementById('amount-input').value = defaultAmt;
+  document.getElementById('sel-nutr-grid').innerHTML = `
+    <div class="sel-nutr-chip kcal"><div class="sn-val">${Math.round(f.kcal)}</div><div class="sn-lbl">kcal/100</div></div>
+    <div class="sel-nutr-chip carb"><div class="sn-val">${Math.round(f.carb)}g</div><div class="sn-lbl">탄수화물</div></div>
+    <div class="sel-nutr-chip prot"><div class="sn-val">${Math.round(f.protein)}g</div><div class="sn-lbl">단백질</div></div>
+    <div class="sel-nutr-chip fat"><div class="sn-val">${Math.round(f.fat)}g</div><div class="sn-lbl">지방</div></div>`;
+  document.getElementById('selected-food-panel').style.display = 'block';
+  updateCalcKcal();
+}
+
+function updateCalcKcal() {
+  if (!searchSelected) return;
+  const amt = parseFloat(document.getElementById('amount-input').value)||0;
+  document.getElementById('calc-kcal').textContent = (searchSelected.kcal*amt/100).toFixed(1)+' kcal';
+}
+
+function addManualFood() {
+  if (!searchSelected) return;
+  const amt = parseFloat(document.getElementById('amount-input').value)||0;
+  const r = amt/100;
+  dayData.meals[searchMeal].push({
+    name: document.getElementById('sel-food-name').textContent,
+    amount: amt,
+    unit: document.getElementById('sel-food-unit').textContent,
+    kcal: searchSelected.kcal*r,
+    carb: searchSelected.carb*r,
+    protein: searchSelected.protein*r,
+    fat: searchSelected.fat*r
+  });
+  updateSummary();
+  document.getElementById('selected-food-panel').style.display='none';
+  document.getElementById('food-search-input').value='';
+  lastQuery='';
+  document.getElementById('search-results').innerHTML='';
+  document.getElementById('local-results-section').style.display='none';
+  hideAISection();
+  searchSelected=null;
+  switchTab('home');
+}
+
+// =====================================================
+// WATER
+// =====================================================
+// ── Water stepper ──────────────────────────────────
+let _waterEditPrev = 0;
+
+function addWater(ml) {
+  dayData.water = Math.max(0, Math.min(3000, (dayData.water||0) + ml));
+  updateWaterUI();
+  saveDayData(viewDate, dayData);
+  if (typeof renderWaterChart === 'function' && document.getElementById('water-chart')) renderWaterChart();
+}
+
+function startWaterEdit() {
+  _waterEditPrev = dayData.water || 0;
+  const display = document.getElementById('water-display');
+  const input   = document.getElementById('water-edit-input');
+  display.style.display = 'none';
+  input.style.display   = 'inline-block';
+  input.value = _waterEditPrev;
+  input.focus();
+  input.select();
+}
+
+function onWaterEditInput(val) {
+  const n = Math.max(0, Math.min(3000, parseInt(val)||0));
+  dayData.water = n;
+  updateWaterUI(true); // skip input update to avoid cursor jump
+  saveDayData(viewDate, dayData);
+  if (typeof renderWaterChart === 'function' && document.getElementById('water-chart')) renderWaterChart();
+}
+
+function endWaterEdit() {
+  document.getElementById('water-display').style.display = 'inline-block';
+  document.getElementById('water-edit-input').style.display = 'none';
+  updateWaterUI();
+}
+
+function cancelWaterEdit() {
+  dayData.water = _waterEditPrev;
+  endWaterEdit();
+  saveDayData(viewDate, dayData);
+}
+
+function updateWaterUI(skipInput) {
+  const w   = dayData.water || 0;
+  const pct = Math.min(100, Math.round(w / WATER_GOAL * 100));
+  document.getElementById('water-ml').textContent  = w.toLocaleString();
+  document.getElementById('water-pct').textContent = pct + '%';
+  document.getElementById('water-fill').style.height = pct + '%';
+  if (!skipInput) {
+    const inp = document.getElementById('water-edit-input');
+    if (inp && inp.style.display !== 'none') inp.value = w;
+  }
+}
+
+// =====================================================
+// BODY STATS
+// =====================================================
+function saveBodyStats() {
+  const w=parseFloat(document.getElementById('inp-weight').value);
+  const m=parseFloat(document.getElementById('inp-muscle').value);
+  const f=parseFloat(document.getElementById('inp-fat').value);
+  if (!w&&!m&&!f){alert('수치를 입력해주세요');return;}
+  let hist=getBodyHistory();
+  const idx=hist.findIndex(h=>h.date===viewDate);
+  const entry={date:viewDate,weight:w||null,muscle:m||null,fat:f||null};
+  if (idx>=0) hist[idx]=entry; else hist.push(entry);
+  hist.sort((a,b)=>a.date.localeCompare(b.date));
+  if (hist.length>90) hist=hist.slice(-90);
+  saveBodyHistory(hist);
+  renderBodyCharts();
+  alert('저장되었습니다! 💚');
+}
+
+let weightChart,muscleChart,fatChart,waterChart;
+
+const chartOpts = {
+  responsive:true, maintainAspectRatio:false,
+  plugins:{legend:{display:false}},
+  scales:{
+    x:{grid:{color:'#f0f0f0'},ticks:{font:{size:10}}},
+    y:{grid:{color:'#f0f0f0'},ticks:{font:{size:10}}}
+  },
+  elements:{point:{radius:4,hoverRadius:6}}
+};
+
+function renderBodyCharts() {
+  const hist=getBodyHistory().slice(-30);
+  const labels=hist.map(h=>h.date.slice(5));
+  function mkLine(canvasId, color, dataKey) {
+    return new Chart(document.getElementById(canvasId),{
+      type:'line', options:chartOpts,
+      data:{labels,datasets:[{data:hist.map(h=>h[dataKey]),
+        borderColor:color,backgroundColor:color+'22',fill:true,tension:0.4,spanGaps:true}]}
+    });
+  }
+  if (weightChart) weightChart.destroy();
+  weightChart=mkLine('weight-chart','#5CC8B0','weight');
+  if (muscleChart) muscleChart.destroy();
+  muscleChart=mkLine('muscle-chart','#B39DDB','muscle');
+  if (fatChart) fatChart.destroy();
+  fatChart=mkLine('fat-chart','#FF8C69','fat');
+
+  const s=getBodyHistory().find(h=>h.date===viewDate);
+  if (s) {
+    if (s.weight) document.getElementById('inp-weight').value=s.weight;
+    if (s.muscle) document.getElementById('inp-muscle').value=s.muscle;
+    if (s.fat) document.getElementById('inp-fat').value=s.fat;
+  }
+}
+
+function renderWaterChart() {
+  const wh=getWaterHistory();
+  const days=[];
+  for(let i=6;i>=0;i--){
+    const d=new Date(REAL_TODAY+'T12:00:00'); d.setDate(d.getDate()-i);
+    const ds=d.toISOString().slice(0,10);
+    const found=wh.find(w=>w.date===ds);
+    days.push({label:ds.slice(5),ml:found?found.ml:0});
+  }
+  if (waterChart) waterChart.destroy();
+  waterChart=new Chart(document.getElementById('water-chart'),{
+    type:'bar',
+    data:{labels:days.map(d=>d.label),datasets:[{
+      data:days.map(d=>d.ml),
+      backgroundColor:days.map(d=>d.ml>=WATER_GOAL?'#5CC8B0':'#82C8E8'),
+      borderRadius:8
+    }]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{grid:{display:false},ticks:{font:{size:10}}},
+        y:{grid:{color:'#f0f0f0'},ticks:{font:{size:10}},max:2000,suggestedMin:0}}}
+  });
+}
+
+// =====================================================
+// INIT
+// =====================================================
+updateDateUI();
+updateSummary();
+updateWaterUI();
+renderMealLog();
+</script>
+</body>
+</html>
