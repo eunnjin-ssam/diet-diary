@@ -1131,7 +1131,7 @@ async function analyzeImage(base64, mediaType) {
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
-        model:'claude-sonnet-4-20250514', max_tokens:1000,
+        model:'claude-3-5-sonnet-20241022', max_tokens:1000,
         messages:[{role:'user',content:[
           {type:'image',source:{type:'base64',media_type:mediaType,data:base64}},
           {type:'text',text:`이 음식 사진을 분석해주세요. JSON만 응답(다른 텍스트 없이):
@@ -1358,7 +1358,7 @@ async function triggerAISearch() {
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body: JSON.stringify({
-        model:'claude-sonnet-4-20250514',
+        model:'claude-3-5-sonnet-20241022',
         max_tokens:1000,
         messages:[{role:'user', content:
 `"${q}"와 관련된 한국 시중 판매 식품의 영양성분을 알려주세요.
