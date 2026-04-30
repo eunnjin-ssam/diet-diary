@@ -1127,7 +1127,7 @@ async function analyzeImage(base64, mediaType) {
   thinking.style.display = 'block';
   resultDiv.style.display = 'none';
   try {
-    const res = await fetch('https://diet-diary.eunnjin.workers.dev',{
+    const res = await fetch('https://diet-two-gamma.vercel.app/api/proxy',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
@@ -1354,7 +1354,7 @@ async function triggerAISearch() {
   updateDivider();
 
   try {
-    const res = await fetch('https://diet-diary.eunnjin.workers.dev', {
+    const res = await fetch('https://diet-two-gamma.vercel.app/api/proxy', {
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body: JSON.stringify({
